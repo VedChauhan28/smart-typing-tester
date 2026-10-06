@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Your result | Smart Typing Tester{% endblock %}
+{% block content %}
+<section class="result-intro">
+  <div class="eyebrow">TEST COMPLETE</div>
+  <h1>Nice work. <em>Here’s the readout.</em></h1>
+  <p>{{ result.date_time|replace("T", " ") }} · {{ result.difficulty|capitalize }} · {{ result.paragraph_length|capitalize }} passage</p>
+</section>
+
+<section class="result-layout">
+  <div class="result-main-card">
+    <div class="result-hero-stat">
+      <span class="metric-label">TYPING SPEED</span>
+      <strong>{{ "%.0f"|format(result.wpm) }} <small>WPM</small></strong>
+      <span class="result-badge">Session saved</span>
+    </div>
+    <div class="result-grid">
+      <div><span class="metric-label">ACCURACY</span><strong>{{ "%.0f"|format(result.accuracy) }}<small>%</small></strong></div>
+      <div><span class="metric-label">ERRORS</span><strong>{{ result.errors }}</strong></div>
+      <div><span class="metric-label">CORRECT CHARS</span><strong>{{ result.correct_chars }}</strong></div>
+      <div><span class="metric-label">INCORRECT CHARS</span><strong>{{ result.incorrect_chars }}</strong></div>
+      <div><span class="metric-label">TIME TAKEN</span><strong>{{ result.time_taken }}<small>s</small></strong></div>
+      <div><span class="metric-label">DIFFICULTY</span><strong class="result-text">{{ result.difficulty|capitalize }}</strong></div>
+    </div>
+  </div>
+  <aside class="result-aside">
+    <div class="result-message">
+      {% if result.accuracy >= 95 %}
+        <span class="result-mark">✦</span>
+        <h2>Sharp and steady.</h2>
+        <p>Your accuracy is excellent. Keep that control while you build more speed.</p>
+      {% elif result.accuracy >= 85 %}
+        <span class="result-mark">↗</span>
+        <h2>Good momentum.</h2>
+        <p>You have a strong foundation. A little more careful practice will make it smoother.</p>
+      {% else %}
+        <span class="result-mark">⌁</span>
+        <h2>Every attempt counts.</h2>
+        <p>Slow down slightly and focus on clean keystrokes. Accuracy makes speed easier later.</p>
+      {% endif %}
+    </div>
+    <div class="result-actions">
+      <a id="practice-again" class="button button-primary button-full" href="{{ url_for('test', difficulty=result.difficulty, paragraph_length=result.paragraph_length, time_limit=60) }}">Practice again <span aria-hidden="true">→</span></a>
+      <a class="button button-secondary button-full" href="{{ url_for('setup') }}">New test</a>
+      <a class="text-button" href="{{ url_for('history') }}">View history <span>→</span></a>
+    </div>
+  </aside>
+</section>
+<script>
+  const practiceAgain = document.getElementById("practice-again");
+  const previousPassage = window.localStorage.getItem("smartTypingLastPassage");
+  const isCustom = window.localStorage.getItem("smartTypingIsCustom") === "true";
+  if (practiceAgain) {
+    const practiceUrl = new URL(practiceAgain.href, window.location.origin);
+    if (isCustom) {
+      practiceUrl.searchParams.set("is_custom", "1");
+    } else if (previousPassage) {
+      practiceUrl.searchParams.set("exclude", previousPassage);
+    }
+    practiceAgain.href = practiceUrl.toString();
+  }
+</script>
+{% endblock %}

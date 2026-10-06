@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Something went wrong | Smart Typing Tester{% endblock %}
+{% block content %}
+<section class="empty-state error-state">
+  <div class="empty-icon">!</div>
+  <h1>Let’s try that again.</h1>
+  <p>{{ message }}</p>
+  <a class="button button-primary" href="{{ url_for('index') }}">Back to home</a>
+</section>
+{% endblock %}

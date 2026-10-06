@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Set up your test | Smart Typing Tester{% endblock %}
+{% block content %}
+<section class="page-intro compact-intro">
+  <div class="eyebrow">TEST CONFIGURATION</div>
+  <h1>Set up your <em>session.</em></h1>
+  <p>Choose the kind of practice that feels right today. You can change these settings every time.</p>
+</section>
+
+<form class="setup-layout" method="post" action="{{ url_for('setup') }}">
+  <div class="setup-main">
+    <fieldset class="option-section">
+      <legend><span>01</span> Paragraph length</legend>
+      <div class="option-grid four">
+        {% for key, item in lengths.items() %}
+        <label class="option-card {% if key == 'custom' %}custom-option{% endif %}">
+          <input
+            type="radio"
+            name="paragraph_length"
+            value="{{ key }}"
+            {% if form_data.get('paragraph_length', 'medium') == key %}checked{% endif %}
+          />
+          <span class="option-card-inner">
+            <span class="option-title">{{ item.label }}</span>
+            <span class="option-description">{{ item.description }}</span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="option-section">
+      <legend><span>02</span> Time limit</legend>
+      <div class="option-grid three">
+        {% for seconds in time_options %}
+        <label class="option-card">
+          <input
+            type="radio"
+            name="time_limit"
+            value="{{ seconds }}"
+            {% if form_data.get('time_limit', '60')|string == seconds|string %}checked{% endif %}
+          />
+          <span class="option-card-inner">
+            <span class="option-title">{{ seconds }} seconds</span>
+            <span class="option-description">{% if seconds == 30 %}Quick warm-up{% elif seconds == 60 %}Standard practice{% else %}Deep focus{% endif %}</span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="option-section">
+      <legend><span>03</span> Difficulty</legend>
+      <div class="option-grid three">
+        {% for key, item in difficulties.items() %}
+        <label class="option-card">
+          <input
+            type="radio"
+            name="difficulty"
+            value="{{ key }}"
+            {% if form_data.get('difficulty', 'medium') == key %}checked{% endif %}
+          />
+          <span class="option-card-inner">
+            <span class="difficulty-dot difficulty-{{ key }}"></span>
+            <span class="option-title">{{ item.label }}</span>
+            <span class="option-description">{{ item.description }}</span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="option-section" id="custom-passage-section">
+      <legend><span>04</span> Custom passage (Optional)</legend>
+      <div class="custom-passage-card">
+        <label for="custom_passage" class="custom-passage-label">Paste or type your own paragraph below</label>
+        <textarea
+          id="custom_passage"
+          name="custom_passage"
+          class="custom-passage-textarea"
+          rows="4"
+          placeholder="Paste or type your own paragraph here..."
+        >{{ form_data.get('custom_passage', '') }}</textarea>
+        <div class="custom-passage-note">
+          <span>i</span> When provided, your custom text will be used for the typing test.
+        </div>
+      </div>
+    </fieldset>
+  </div>
+
+  <aside class="setup-aside">
+    <div class="aside-card">
+      <div class="aside-icon">⌨</div>
+      <h2>Ready when you are.</h2>
+      <p>Your timer begins with your first character, so take a breath and settle in.</p>
+      <button class="button button-primary button-full" type="submit">Begin test <span aria-hidden="true">→</span></button>
+      <div class="aside-tip"><span>i</span> You can stop early by finishing the passage.</div>
+    </div>
+  </aside>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const customTextarea = document.getElementById("custom_passage");
+    const customRadio = document.querySelector('input[name="paragraph_length"][value="custom"]');
+    if (!customTextarea || !customRadio) return;
+
+    // Auto-select Custom radio when typing in the textarea
+    customTextarea.addEventListener("input", function () {
+      if (customTextarea.value.trim().length > 0) {
+        customRadio.checked = true;
+      }
+    });
+
+    // Auto-focus textarea when user selects Custom radio
+    const radios = document.querySelectorAll('input[name="paragraph_length"]');
+    radios.forEach(function (radio) {
+      radio.addEventListener("change", function () {
+        if (customRadio.checked) {
+          customTextarea.focus();
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

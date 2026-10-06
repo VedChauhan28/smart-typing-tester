@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Smart Typing Tester | Build your speed{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> A focused typing practice tool</div>
+    <h1>Type with purpose.<br /><em>Track your progress.</em></h1>
+    <p class="hero-text">
+      Build speed and accuracy with short, focused typing sessions. See your mistakes
+      as they happen, then use your history to keep improving.
+    </p>
+    <div class="hero-actions">
+      <a class="button button-primary" href="{{ url_for('setup') }}">
+        Start a test <span aria-hidden="true">→</span>
+      </a>
+      <a class="button button-secondary" href="{{ url_for('history') }}">View history</a>
+    </div>
+    <div class="hero-note"><span class="check-icon">✓</span> No sign-up required</div>
+  </div>
+  <div class="hero-visual" aria-label="Typing performance preview">
+    <div class="visual-glow"></div>
+    <div class="score-card floating-card">
+      <div class="mini-label">CURRENT SESSION</div>
+      <div class="score-number">68 <span>WPM</span></div>
+      <div class="score-line"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="score-footer"><span>+12% this week</span><span class="trend">↗</span></div>
+    </div>
+    <div class="letter-card floating-card">
+      <span class="letter letter-a">A</span>
+      <span class="letter letter-b">z</span>
+      <span class="letter letter-c">↗</span>
+    </div>
+    <div class="visual-orbit orbit-one"></div>
+    <div class="visual-orbit orbit-two"></div>
+  </div>
+</section>
+
+<section class="home-stats">
+  <div>
+    <span class="stat-label">Best speed</span>
+    <strong>{{ "%.0f"|format(summary.best_speed) }} <small>WPM</small></strong>
+  </div>
+  <div>
+    <span class="stat-label">Best accuracy</span>
+    <strong>{{ "%.0f"|format(summary.best_accuracy) }}<small>%</small></strong>
+  </div>
+  <div>
+    <span class="stat-label">Tests completed</span>
+    <strong>{{ summary.total_tests }}</strong>
+  </div>
+  <div class="stats-message">
+    {% if summary.total_tests %}
+      <span class="status-dot"></span> Your practice history is ready
+    {% else %}
+      <span class="status-dot"></span> Your first result starts here
+    {% endif %}
+  </div>
+</section>
+
+<section class="how-section">
+  <div class="section-heading">
+    <div>
+      <div class="eyebrow">HOW IT WORKS</div>
+      <h2>Three minutes can<br /><em>change your rhythm.</em></h2>
+    </div>
+    <p>Simple feedback, clear numbers, and a quiet place to get better at your own pace.</p>
+  </div>
+  <div class="steps-grid">
+    <article class="step-card">
+      <span class="step-number">01</span>
+      <span class="step-icon">⌁</span>
+      <h3>Choose your challenge</h3>
+      <p>Pick a passage length, time limit, and difficulty that matches your goal.</p>
+    </article>
+    <article class="step-card">
+      <span class="step-number">02</span>
+      <span class="step-icon">⌨</span>
+      <h3>Type in the moment</h3>
+      <p>The timer starts with your first key. Mistakes are highlighted immediately.</p>
+    </article>
+    <article class="step-card">
+      <span class="step-number">03</span>
+      <span class="step-icon">↗</span>
+      <h3>Learn from the result</h3>
+      <p>Review your WPM, accuracy, and previous sessions to see your progress.</p>
+    </article>
+  </div>
+</section>
+{% endblock %}

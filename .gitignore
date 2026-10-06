@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+typing_tester.db
+.venv/
+venv/

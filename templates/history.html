@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Test history | Smart Typing Tester{% endblock %}
+{% block content %}
+<section class="page-intro history-intro">
+  <div>
+    <div class="eyebrow">YOUR PRACTICE LOG</div>
+    <h1>Progress you can <em>see.</em></h1>
+    <p>Every completed test is saved here so you can notice the small improvements.</p>
+  </div>
+  <a class="button button-primary" href="{{ url_for('setup') }}">Start a new test <span aria-hidden="true">→</span></a>
+</section>
+
+<section class="summary-grid">
+  <div class="summary-card"><span class="summary-icon">↗</span><span class="metric-label">BEST SPEED</span><strong>{{ "%.0f"|format(summary.best_speed) }} <small>WPM</small></strong><span class="summary-note">Your fastest session</span></div>
+  <div class="summary-card"><span class="summary-icon">◎</span><span class="metric-label">BEST ACCURACY</span><strong>{{ "%.0f"|format(summary.best_accuracy) }}<small>%</small></strong><span class="summary-note">Cleanest typing</span></div>
+  <div class="summary-card"><span class="summary-icon">#</span><span class="metric-label">LOWEST ERRORS</span><strong>{{ summary.lowest_errors }}</strong><span class="summary-note">In one session</span></div>
+  <div class="summary-card"><span class="summary-icon">⌁</span><span class="metric-label">TOTAL TESTS</span><strong>{{ summary.total_tests }}</strong><span class="summary-note">Sessions completed</span></div>
+</section>
+
+{% if history %}
+<section class="chart-card">
+  <div class="chart-heading">
+    <div><div class="eyebrow">PERFORMANCE</div><h2>Speed over time</h2></div>
+    <span class="chart-legend"><span></span> WPM</span>
+  </div>
+  <div class="chart-wrap"><canvas id="performance-chart"></canvas></div>
+</section>
+
+<section class="history-card">
+  <div class="table-heading"><h2>Recent tests</h2><span>Showing {{ history|length }} session{% if history|length != 1 %}s{% endif %}</span></div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Date</th><th>Speed</th><th>Accuracy</th><th>Errors</th><th>Difficulty</th><th>Time</th></tr></thead>
+      <tbody>
+        {% for item in history %}
+        <tr>
+          <td><a href="{{ url_for('result', result_id=item.id) }}">{{ item.date_time|replace("T", " ") }}</a></td>
+          <td><strong>{{ "%.0f"|format(item.wpm) }} WPM</strong></td>
+          <td>{{ "%.0f"|format(item.accuracy) }}%</td>
+          <td>{{ item.errors }}</td>
+          <td><span class="tag tag-{{ item.difficulty }}">{{ item.difficulty|capitalize }}</span></td>
+          <td>{{ item.time_taken }}s</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<script id="history-data" type="application/json">{{ history|map(attribute='wpm')|list|reverse|list|tojson }}</script>
+<script id="history-labels" type="application/json">{{ history|map(attribute='date_time')|list|reverse|list|tojson }}</script>
+{% else %}
+<section class="empty-state">
+  <div class="empty-icon">⌁</div>
+  <h2>Your history is waiting.</h2>
+  <p>Complete your first typing test and your speed, accuracy, and progress will appear here.</p>
+  <a class="button button-primary" href="{{ url_for('setup') }}">Take your first test <span aria-hidden="true">→</span></a>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if history %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  const wpmData = JSON.parse(document.getElementById("history-data").textContent);
+  const rawLabels = JSON.parse(document.getElementById("history-labels").textContent);
+  const labels = rawLabels.map((value, index) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? `Test ${index + 1}` : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  });
+  new Chart(document.getElementById("performance-chart"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "WPM",
+        data: wpmData,
+        borderColor: "#ef8354",
+        backgroundColor: "rgba(239, 131, 84, 0.12)",
+        pointBackgroundColor: "#ef8354",
+        pointBorderColor: "#fffdf9",
+        pointBorderWidth: 3,
+        pointRadius: 5,
+        tension: 0.35,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#7b817e", font: { family: "DM Sans" } } },
+        y: { beginAtZero: true, grid: { color: "rgba(34, 52, 49, 0.08)" }, ticks: { color: "#7b817e", font: { family: "DM Sans" } } }
+      }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

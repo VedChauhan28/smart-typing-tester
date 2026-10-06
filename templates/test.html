@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Typing Test | Smart Typing Tester{% endblock %}
+{% block content %}
+<section class="test-header">
+  <div>
+    <a class="back-link" href="{{ url_for('setup') }}">← Change settings</a>
+    <div class="eyebrow test-eyebrow"><span class="eyebrow-dot"></span> LIVE PARAGRAPH TYPING TEST</div>
+    <h1>Type the <em>paragraph</em> below</h1>
+  </div>
+  <div class="test-header-actions">
+    <button type="button" class="button button-secondary button-sm" id="sound-toggle-btn" aria-label="Toggle typing sound">
+      🔊 Sound: ON
+    </button>
+    <div class="test-meta">
+      <span class="tag tag-{{ settings.difficulty }}">{{ settings.difficulty|capitalize }}</span>
+      <span class="meta-divider">·</span>
+      <span>{% if settings.paragraph_length == 'custom' %}Custom passage{% else %}{{ settings.paragraph_length|capitalize }} passage{% endif %}</span>
+    </div>
+    <a href="{{ url_for('test', difficulty=settings.difficulty, paragraph_length=settings.paragraph_length, time_limit=settings.time_limit) }}" class="button button-secondary button-sm" id="new-passage-btn">
+      🔄 Next Passage
+    </a>
+  </div>
+</section>
+
+<section class="live-panel typing-com-panel">
+  <div class="live-stats">
+    <div class="live-timer">
+      <span class="metric-label">TIME REMAINING</span>
+      <strong id="time-remaining">{{ "%02d"|format(settings.time_limit) }}<small>s</small></strong>
+    </div>
+    <div class="live-stat"><span class="metric-label">PROGRESS</span><strong id="progress">0<small>%</small></strong></div>
+    <div class="live-stat"><span class="metric-label">WPM</span><strong id="wpm">0</strong></div>
+    <div class="live-stat"><span class="metric-label">ACCURACY</span><strong id="accuracy">100<small>%</small></strong></div>
+    <div class="live-stat"><span class="metric-label">ERRORS</span><strong id="errors">0</strong></div>
+    <div class="live-stat"><span class="metric-label">TYPED</span><strong id="correct-chars">0</strong></div>
+  </div>
+
+  <div class="passage-card interactive-passage-card" id="passage-card">
+    <div class="passage-card-header">
+      <span class="passage-label"><span class="live-dot"></span> PARAGRAPH TYPING CANVAS</span>
+      <span class="focus-hint" id="focus-hint">Click anywhere to focus & start typing</span>
+    </div>
+    
+    <div id="passage-display" class="passage-display paragraph-writing-canvas" aria-label="Passage to type" tabindex="0"></div>
+
+    <input
+      type="text"
+      id="typing-input"
+      class="hidden-typing-input"
+      spellcheck="false"
+      autocomplete="off"
+      autocapitalize="off"
+      aria-label="Typing input field"
+    />
+  </div>
+
+  <div class="test-controls-bar">
+    <div class="typing-help" id="typing-help">
+      <span>⚡</span> Start typing to launch the timer. Press <kbd>Tab</kbd> + <kbd>Enter</kbd> or click <strong>Restart</strong> to retry.
+    </div>
+    <button type="button" class="button button-secondary button-sm" id="restart-test-btn">
+      ↺ Restart
+    </button>
+  </div>
+
+  <div id="test-message" class="test-message" aria-live="polite"></div>
+</section>
+
+<div class="test-bottom-note">Keep your eyes on the text on screen. Smooth rhythm builds accuracy and speed.</div>
+<script id="test-config" type="application/json">{{ {"passage": passage, "time_limit": settings.time_limit, "difficulty": settings.difficulty, "paragraph_length": settings.paragraph_length, "is_custom": settings.is_custom}|tojson }}</script>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+{% endblock %}
