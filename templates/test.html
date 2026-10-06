@@ -15,8 +15,10 @@
       <span class="tag tag-{{ settings.difficulty }}">{{ settings.difficulty|capitalize }}</span>
       <span class="meta-divider">·</span>
       <span>{% if settings.paragraph_length == 'custom' %}Custom passage{% else %}{{ settings.paragraph_length|capitalize }} passage{% endif %}</span>
+      <span class="meta-divider">·</span>
+      <span>{% if settings.language == 'hindi' %}🇮🇳 Hindi{% elif settings.language == 'gujarati' %}🏛️ Gujarati{% else %}🇬🇧 English{% endif %}</span>
     </div>
-    <a href="{{ url_for('test', difficulty=settings.difficulty, paragraph_length=settings.paragraph_length, time_limit=settings.time_limit) }}" class="button button-secondary button-sm" id="new-passage-btn">
+    <a href="{{ url_for('test', difficulty=settings.difficulty, paragraph_length=settings.paragraph_length, time_limit=settings.time_limit, language=settings.language) }}" class="button button-secondary button-sm" id="new-passage-btn">
       🔄 Next Passage
     </a>
   </div>
@@ -41,7 +43,11 @@
       <span class="focus-hint" id="focus-hint">Click anywhere to focus & start typing</span>
     </div>
     
-    <div id="passage-display" class="passage-display paragraph-writing-canvas" aria-label="Passage to type" tabindex="0"></div>
+    <div id="passage-display" class="passage-display paragraph-writing-canvas"
+         aria-label="Passage to type"
+         tabindex="0"
+         lang="{% if settings.language == 'hindi' %}hi{% elif settings.language == 'gujarati' %}gu{% else %}en{% endif %}"
+    ></div>
 
     <input
       type="text"
@@ -67,7 +73,7 @@
 </section>
 
 <div class="test-bottom-note">Keep your eyes on the text on screen. Smooth rhythm builds accuracy and speed.</div>
-<script id="test-config" type="application/json">{{ {"passage": passage, "time_limit": settings.time_limit, "difficulty": settings.difficulty, "paragraph_length": settings.paragraph_length, "is_custom": settings.is_custom}|tojson }}</script>
+<script id="test-config" type="application/json">{{ {"passage": passage, "time_limit": settings.time_limit, "difficulty": settings.difficulty, "paragraph_length": settings.paragraph_length, "language": settings.language, "is_custom": settings.is_custom}|tojson }}</script>
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>

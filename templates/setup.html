@@ -10,6 +10,27 @@
 <form class="setup-layout" method="post" action="{{ url_for('setup') }}">
   <div class="setup-main">
     <fieldset class="option-section">
+      <legend><span>00</span> Language</legend>
+      <div class="option-grid three">
+        {% set lang_icons = {'english': '🇬🇧', 'hindi': '🇮🇳', 'gujarati': '🏛️'} %}
+        {% for key, item in languages.items() %}
+        <label class="option-card">
+          <input
+            type="radio"
+            name="language"
+            value="{{ key }}"
+            {% if form_data.get('language', 'english') == key %}checked{% endif %}
+          />
+          <span class="option-card-inner">
+            <span class="option-title">{{ lang_icons.get(key, '🌐') }} {{ item.label }}</span>
+            <span class="option-description">{{ item.script | capitalize }} script</span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="option-section">
       <legend><span>01</span> Paragraph length</legend>
       <div class="option-grid four">
         {% for key, item in lengths.items() %}

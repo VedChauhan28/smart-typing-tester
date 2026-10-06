@@ -13,7 +13,7 @@ from database import (
     initialize_database,
     save_result,
 )
-from passages import DIFFICULTIES, LENGTHS, TIME_OPTIONS, choose_passage
+from passages import DIFFICULTIES, LANGUAGES, LENGTHS, TIME_OPTIONS, choose_passage
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -32,9 +32,13 @@ def validate_configuration(form_data):
     paragraph_length = form_data.get("paragraph_length", "medium").lower()
     time_limit = form_data.get("time_limit", "60").lower()
     custom_passage = form_data.get("custom_passage", "").strip()
+    language = form_data.get("language", "english").lower()
 
     if difficulty not in DIFFICULTIES:
         return None, "Please choose an available difficulty."
+
+    if language not in LANGUAGES:
+        return None, "Please choose an available language."
 
     # If user provided custom text or chose custom length mode
     if paragraph_length == "custom" or custom_passage:
@@ -58,6 +62,7 @@ def validate_configuration(form_data):
         "difficulty": difficulty,
         "paragraph_length": paragraph_length,
         "time_limit": seconds,
+        "language": language,
         "custom_passage": custom_passage if paragraph_length == "custom" else "",
     }, None
 
@@ -79,6 +84,7 @@ def setup():
             return render_template(
                 "setup.html",
                 difficulties=DIFFICULTIES,
+                languages=LANGUAGES,
                 lengths=LENGTHS,
                 time_options=TIME_OPTIONS,
                 form_data=request.form,
@@ -92,6 +98,7 @@ def setup():
                     difficulty=settings["difficulty"],
                     paragraph_length="custom",
                     time_limit=settings["time_limit"],
+                    language=settings["language"],
                     is_custom="1",
                 )
             )
@@ -103,12 +110,14 @@ def setup():
                 difficulty=settings["difficulty"],
                 paragraph_length=settings["paragraph_length"],
                 time_limit=settings["time_limit"],
+                language=settings["language"],
             )
         )
 
     return render_template(
         "setup.html",
         difficulties=DIFFICULTIES,
+        languages=LANGUAGES,
         lengths=LENGTHS,
         time_options=TIME_OPTIONS,
         form_data=request.args,
@@ -121,11 +130,15 @@ def test():
     difficulty = request.args.get("difficulty", "medium").lower()
     paragraph_length = request.args.get("paragraph_length", "medium").lower()
     time_limit = request.args.get("time_limit", "60")
+    language = request.args.get("language", "english").lower()
     is_custom = request.args.get("is_custom") == "1" or paragraph_length == "custom"
 
     if difficulty not in DIFFICULTIES:
         flash("Choose your test settings before starting.", "error")
         return redirect(url_for("setup"))
+
+    if language not in LANGUAGES:
+        language = "english"
 
     try:
         seconds = int(time_limit)
@@ -147,13 +160,14 @@ def test():
             return redirect(url_for("setup"))
         exclude = request.args.get("exclude", "")
         passage = choose_passage(
-            difficulty, paragraph_length, time_limit=seconds, exclude=exclude
+            difficulty, paragraph_length, time_limit=seconds, exclude=exclude, language=language
         )
 
     settings = {
         "difficulty": difficulty,
         "paragraph_length": paragraph_length,
         "time_limit": seconds,
+        "language": language,
         "is_custom": is_custom,
     }
 

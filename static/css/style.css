@@ -113,3 +113,21 @@ h2 { font-size: 34px; line-height: 1.08; }
 .flash-stack { left: 50%; position: fixed; top: 18px; transform: translateX(-50%); z-index: 10; }.flash { background: var(--ink); border-radius: 8px; box-shadow: var(--shadow); color: white; font-size: 12px; padding: 12px 18px; }.flash-error { border-left: 4px solid var(--orange); }
 @media (max-width: 900px) { .site-shell { padding: 0 25px; }.hero { grid-template-columns: 1fr; padding-top: 62px; }.hero-visual { margin: 35px auto 0; max-width: 560px; width: 100%; }.home-stats { grid-template-columns: repeat(3, 1fr); gap: 19px; }.stats-message { grid-column: 1 / -1; padding-left: 0; }.setup-layout, .result-layout { grid-template-columns: 1fr; }.setup-aside { padding-top: 0; }.aside-card { position: static; }.result-aside { display: grid; grid-template-columns: 1fr 1fr; }.live-stats { grid-template-columns: repeat(3, 1fr); row-gap: 24px; }.live-stat:nth-child(3) { border: 0; }.summary-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 620px) { .site-shell { padding: 0 17px; }.navbar { min-height: 72px; }.brand { font-size: 13px; }.nav-links { gap: 14px; font-size: 11px; }.hero { min-height: 0; padding: 55px 0 50px; }.hero h1 { font-size: 47px; }.hero-text { font-size: 15px; }.hero-visual { min-height: 300px; transform: scale(.88); transform-origin: left top; width: 115%; }.visual-glow { height: 280px; width: 280px; }.score-card { left: 6%; }.letter-card { right: 3%; }.home-stats { grid-template-columns: repeat(2, 1fr); }.home-stats > div:nth-child(2) { border-right: 0; }.home-stats > div { padding-left: 0; }.stats-message { border-top: 1px solid var(--line); padding-top: 16px; }.section-heading, .history-intro, .test-header { align-items: flex-start; flex-direction: column; gap: 24px; }.how-section { padding-top: 72px; }.steps-grid, .option-grid.three, .option-grid.four { grid-template-columns: 1fr; }.compact-intro h1, .history-intro h1, .test-header h1, .result-intro h1 { font-size: 41px; }.option-card-inner { min-height: 80px; }.custom-option .option-card-inner { min-height: 105px; }.test-header { padding-top: 42px; }.test-meta { margin-bottom: 0; }.live-panel { padding: 15px; }.live-stats { grid-template-columns: repeat(2, 1fr); gap: 16px; padding-left: 0; padding-right: 0; }.live-stat:nth-child(2) { border-right: 0; }.live-stat:nth-child(4) { border-right: 0; }.passage-card { padding: 18px; }.passage-display { font-size: 16px; line-height: 1.75; }.typing-input { font-size: 15px; min-height: 145px; }.result-aside { display: flex; }.result-main-card { padding: 24px; }.result-hero-stat strong { font-size: 53px; }.result-grid { grid-template-columns: repeat(2, 1fr); }.result-badge { display: none; }.summary-grid { grid-template-columns: 1fr 1fr; }.summary-card { padding: 15px; }.summary-card strong { font-size: 25px; }.chart-card, .history-card { padding: 17px; }.footer { flex-direction: column; gap: 5px; } }
+
+/* ── Language-aware fonts for passage canvas ──────────────────────────────── */
+#passage-display[lang="hi"],
+#typing-input[lang="hi"] {
+  font-family: "Noto Sans Devanagari", "DM Sans", sans-serif;
+  font-size: 19px;
+  line-height: 2;
+  letter-spacing: 0.01em;
+}
+#passage-display[lang="gu"],
+#typing-input[lang="gu"] {
+  font-family: "Noto Sans Gujarati", "DM Sans", sans-serif;
+  font-size: 19px;
+  line-height: 2;
+  letter-spacing: 0.01em;
+}
+/* Sync the hidden typing input lang with the passage for consistent font */
+.hidden-typing-input { font-family: inherit; }

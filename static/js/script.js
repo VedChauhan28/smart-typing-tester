@@ -21,6 +21,12 @@
   const focusHint = document.getElementById("focus-hint");
   const soundToggleBtn = document.getElementById("sound-toggle-btn");
 
+  // Sync lang attribute to hidden input so the correct script font is applied
+  if (passageDisplay && input) {
+    const lang = passageDisplay.getAttribute("lang");
+    if (lang) input.setAttribute("lang", lang);
+  }
+
   let timerId = null;
   let startTime = null;
   let elapsedSeconds = 0;
