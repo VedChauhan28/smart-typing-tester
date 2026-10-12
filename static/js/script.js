@@ -54,9 +54,12 @@
     updateSoundUI();
   }
 
-  // Web Audio API Synthesizer for Typing Sounds
+  // Typing.com Official Sound Engine (Exact Audio Assets & Sprites)
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   let audioCtx = null;
+  let keySpriteBuffer = null;
+  let errorAudioBuffer = null;
+  let starAudioBuffer = null;
 
   function getAudioContext() {
     if (!audioCtx) {
@@ -68,37 +71,80 @@
     return audioCtx;
   }
 
+  // Exact Typing.com keysprite slices [startSeconds, durationSeconds]
+  const KEY_SPRITE_SLICES = [
+    [0.000, 0.250],
+    [0.750, 0.334],
+    [1.584, 0.315],
+    [2.399, 0.305],
+    [3.203, 0.309],
+    [4.012, 0.286],
+    [4.798, 0.329],
+    [5.628, 0.307],
+    [6.435, 0.302],
+    [7.237, 0.313],
+    [8.050, 0.343],
+    [8.893, 0.288]
+  ];
+  const SPACE_SLICE = [12.069, 0.382];
+
+  async function loadAudioBuffer(url) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const arr = await res.arrayBuffer();
+      const ctx = getAudioContext();
+      return await ctx.decodeAudioData(arr);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function initTypingAudio() {
+    loadAudioBuffer("/static/audio/keysprite.mp3").then(buf => { keySpriteBuffer = buf; });
+    loadAudioBuffer("/static/audio/error.mp3").then(buf => { errorAudioBuffer = buf; });
+    loadAudioBuffer("/static/audio/star.mp3").then(buf => { starAudioBuffer = buf; });
+  }
+
+  initTypingAudio();
+
+  // Resume AudioContext on initial user gesture (required by browser autoplay policy)
+  document.addEventListener("click", () => {
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }, { once: true });
+  document.addEventListener("keydown", () => {
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }, { once: true });
+
   function playKeySound(isSpace = false, isError = false) {
     if (!soundEnabled) return;
     try {
       const ctx = getAudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
 
       if (isError) {
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(140, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.08);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-      } else if (isSpace) {
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(300, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.05);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-      } else {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(1200 + Math.random() * 250, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.035);
-        gain.gain.setValueAtTime(0.07 + Math.random() * 0.03, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
+        if (errorAudioBuffer) {
+          const src = ctx.createBufferSource();
+          src.buffer = errorAudioBuffer;
+          const gainNode = ctx.createGain();
+          gainNode.gain.value = 1.0;
+          src.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          src.start(0);
+          return;
+        }
       }
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + (isError ? 0.08 : 0.04));
+      if (keySpriteBuffer) {
+        const slice = isSpace ? SPACE_SLICE : KEY_SPRITE_SLICES[Math.floor(Math.random() * KEY_SPRITE_SLICES.length)];
+        const src = ctx.createBufferSource();
+        src.buffer = keySpriteBuffer;
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = 1.0;
+        src.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        src.start(0, slice[0], slice[1]);
+        return;
+      }
     } catch (e) {}
   }
 
@@ -106,20 +152,16 @@
     if (!soundEnabled) return;
     try {
       const ctx = getAudioContext();
-      const notes = [523.25, 659.25, 783.99, 1046.50];
-      notes.forEach((freq, idx) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        const startTime = ctx.currentTime + idx * 0.08;
-        gain.gain.setValueAtTime(0.09, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(startTime);
-        osc.stop(startTime + 0.25);
-      });
+      if (starAudioBuffer) {
+        const src = ctx.createBufferSource();
+        src.buffer = starAudioBuffer;
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = 0.95;
+        src.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        src.start(0);
+        return;
+      }
     } catch (e) {}
   }
 
@@ -205,6 +247,11 @@
     }, 250);
   }
 
+  /* ── Phonetic Transliteration State (Hindi / Gujarati) ───────────────────── */
+  const isIndic = config.language === "hindi" || config.language === "gujarati";
+  let romanWordBuffer = "";
+  let committedIndicText = "";
+
   function resetTest() {
     if (timerId) window.clearInterval(timerId);
     timerId = null;
@@ -212,6 +259,8 @@
     elapsedSeconds = 0;
     hasFinished = false;
     lastTypedLength = 0;
+    romanWordBuffer = "";
+    committedIndicText = "";
     input.disabled = false;
     input.value = "";
     message.textContent = "";
@@ -278,9 +327,374 @@
     passageDisplay.addEventListener("click", focusInput);
   }
 
+  /* ── Phonetic Transliteration Engine ─────────────────────────────────────── */
+  const CONSONANT_MAP = [
+    { k: "shhr", hi: "ष्र", gu: "ષ્ર" },
+    { k: "tthr", hi: "ठ्र", gu: "ઠ્ર" },
+    { k: "ddhr", hi: "ढ्र", gu: "ઢ્ર" },
+    { k: "chhr", hi: "छ्र", gu: "છ્ર" },
+    { k: "chh", hi: "छ", gu: "છ" },
+    { k: "tth", hi: "ठ", gu: "ઠ" },
+    { k: "ddh", hi: "ढ", gu: "ઢ" },
+    { k: "shh", hi: "ष", gu: "ષ" },
+    { k: "ksh", hi: "क्ष", gu: "ક્ષ" },
+    { k: "gya", hi: "ज्ञ", gu: "જ્ઞ" },
+    { k: "jny", hi: "ज्ञ", gu: "જ્ઞ" },
+    { k: "shr", hi: "श्र", gu: "શ્ર" },
+    { k: "kh",  hi: "ख", gu: "ખ" },
+    { k: "gh",  hi: "घ", gu: "ઘ" },
+    { k: "ng",  hi: "ङ", gu: "ઙ" },
+    { k: "ch",  hi: "च", gu: "ચ" },
+    { k: "jh",  hi: "झ", gu: "ઝ" },
+    { k: "ny",  hi: "ञ", gu: "ઞ" },
+    { k: "tt",  hi: "ट", gu: "ટ" },
+    { k: "th",  hi: "थ", gu: "થ" },
+    { k: "Th",  hi: "ठ", gu: "ઠ" },
+    { k: "dd",  hi: "ड", gu: "ડ" },
+    { k: "dh",  hi: "ध", gu: "ધ" },
+    { k: "Dh",  hi: "ढ", gu: "ઢ" },
+    { k: "ph",  hi: "फ", gu: "ફ" },
+    { k: "bh",  hi: "भ", gu: "ભ" },
+    { k: "sh",  hi: "श", gu: "શ" },
+    { k: "Sh",  hi: "ष", gu: "ષ" },
+    { k: "gy",  hi: "ज्ञ", gu: "જ્ઞ" },
+    { k: "tr",  hi: "त्र", gu: "ત્ર" },
+    { k: "ld",  hi: "ळ", gu: "ળ" },
+    { k: "k",   hi: "क", gu: "ક" },
+    { k: "g",   hi: "ग", gu: "ગ" },
+    { k: "c",   hi: "च", gu: "ચ" },
+    { k: "j",   hi: "ज", gu: "જ" },
+    { k: "z",   hi: "ज़", gu: "ઝ" },
+    { k: "T",   hi: "ट", gu: "ટ" },
+    { k: "t",   hi: "त", gu: "ત" },
+    { k: "D",   hi: "ड", gu: "ડ" },
+    { k: "d",   hi: "द", gu: "દ" },
+    { k: "N",   hi: "ण", gu: "ણ" },
+    { k: "n",   hi: "न", gu: "ન" },
+    { k: "p",   hi: "प", gu: "પ" },
+    { k: "f",   hi: "फ", gu: "ફ" },
+    { k: "b",   hi: "ब", gu: "બ" },
+    { k: "m",   hi: "म", gu: "મ" },
+    { k: "y",   hi: "य", gu: "ય" },
+    { k: "r",   hi: "र", gu: "ર" },
+    { k: "l",   hi: "ल", gu: "લ" },
+    { k: "L",   hi: "ळ", gu: "ળ" },
+    { k: "v",   hi: "व", gu: "વ" },
+    { k: "w",   hi: "व", gu: "વ" },
+    { k: "s",   hi: "स", gu: "સ" },
+    { k: "S",   hi: "श", gu: "શ" },
+    { k: "h",   hi: "ह", gu: "હ" },
+    { k: "x",   hi: "क्ष", gu: "ક્ષ" },
+    { k: "q",   hi: "क", gu: "ક" }
+  ];
+
+  const VOWEL_MAP = [
+    { k: "aaa", ind_hi: "आ", ind_gu: "આ", mat_hi: "ा", mat_gu: "ા" },
+    { k: "aau", ind_hi: "औ", ind_gu: "ઔ", mat_hi: "ौ", mat_gu: "ૌ" },
+    { k: "aai", ind_hi: "ऐ", ind_gu: "ઐ", mat_hi: "ै", mat_gu: "ૈ" },
+    { k: "aa",  ind_hi: "आ", ind_gu: "આ", mat_hi: "ा", mat_gu: "ા" },
+    { k: "ee",  ind_hi: "ई", ind_gu: "ઈ", mat_hi: "ी", mat_gu: "ી" },
+    { k: "ii",  ind_hi: "ई", ind_gu: "ઈ", mat_hi: "ी", mat_gu: "ી" },
+    { k: "oo",  ind_hi: "ऊ", ind_gu: "ઊ", mat_hi: "ू", mat_gu: "ૂ" },
+    { k: "uu",  ind_hi: "ऊ", ind_gu: "ઊ", mat_hi: "ू", mat_gu: "ૂ" },
+    { k: "ai",  ind_hi: "ऐ", ind_gu: "ઐ", mat_hi: "ै", mat_gu: "ૈ" },
+    { k: "au",  ind_hi: "औ", ind_gu: "ઔ", mat_hi: "ौ", mat_gu: "ૌ" },
+    { k: "ou",  ind_hi: "औ", ind_gu: "ઔ", mat_hi: "ौ", mat_gu: "ૌ" },
+    { k: "ri",  ind_hi: "ऋ", ind_gu: "ઋ", mat_hi: "ृ", mat_gu: "ૃ" },
+    { k: "ru",  ind_hi: "ऋ", ind_gu: "ઋ", mat_hi: "ृ", mat_gu: "ૃ" },
+    { k: "a",   ind_hi: "अ", ind_gu: "અ", mat_hi: "",  mat_gu: "" },
+    { k: "A",   ind_hi: "आ", ind_gu: "આ", mat_hi: "ा", mat_gu: "ા" },
+    { k: "i",   ind_hi: "इ", ind_gu: "ઇ", mat_hi: "ि", mat_gu: "િ" },
+    { k: "I",   ind_hi: "ई", ind_gu: "ઈ", mat_hi: "ी", mat_gu: "ી" },
+    { k: "u",   ind_hi: "उ", ind_gu: "ઉ", mat_hi: "ु", mat_gu: "ુ" },
+    { k: "U",   ind_hi: "ऊ", ind_gu: "ઊ", mat_hi: "ू", mat_gu: "ૂ" },
+    { k: "e",   ind_hi: "ए", ind_gu: "એ", mat_hi: "े", mat_gu: "ે" },
+    { k: "E",   ind_hi: "ए", ind_gu: "એ", mat_hi: "े", mat_gu: "ે" },
+    { k: "o",   ind_hi: "ओ", ind_gu: "ઓ", mat_hi: "ो", mat_gu: "ો" },
+    { k: "O",   ind_hi: "ओ", ind_gu: "ઓ", mat_hi: "ो", mat_gu: "ો" }
+  ];
+
+  const VIRAMA = { hindi: "्", gujarati: "્" };
+  const ANUSVARA = { hindi: "ं", gujarati: "ં" };
+  const VISARGA = { hindi: "ः", gujarati: "ઃ" };
+
+  const WORD_OVERRIDES = {
+    hindi: {
+      "hai": "है", "hain": "हैं", "me": "में", "mein": "में", "main": "मैं",
+      "bhi": "भी", "ho": "हो", "hoon": "हूँ", "huun": "हूँ", "hu": "हूँ", "hun": "हूँ",
+      "aaj": "आज", "ka": "का", "ki": "की", "kee": "की", "ke": "के", "ko": "को",
+      "se": "से", "aur": "और", "yeh": "यह", "woh": "वह", "voh": "वह",
+      "tha": "था", "thi": "थी", "the": "थे", "nahi": "नहीं", "nahin": "नहीं",
+      "bharat": "भारत", "bhaarat": "भारत", "namaste": "नमस्ते"
+    },
+    gujarati: {
+      "chhe": "છે", "che": "છે", "chho": "છો", "cho": "છો", "chhu": "છું",
+      "ma": "માં", "maa": "માં", "pan": "પણ", "ane": "અને", "te": "તે",
+      "nathi": "નથી", "aaj": "આજ", "aaje": "આજે", "kem": "કેમ",
+      "bhojan": "ભોજન", "gujarat": "ગુજરાત", "bharat": "ભારત", "bharatnu": "ભારતનું",
+      "namaste": "નમસ્તે"
+    }
+  };
+
+  function transliterateWord(roman, lang, expectedWord = "") {
+    if (!roman) return "";
+    const lower = roman.toLowerCase();
+
+    // 1. Direct dictionary match
+    if (WORD_OVERRIDES[lang]?.[lower]) {
+      const match = WORD_OVERRIDES[lang][lower];
+      if (expectedWord && expectedWord.startsWith(match)) return match;
+      if (!expectedWord) return match;
+    }
+
+    // 2. Phonetic token parsing
+    let res = "";
+    let i = 0;
+    const len = roman.length;
+
+    while (i < len) {
+      const rem = roman.slice(i);
+
+      if (rem[0] === "M") {
+        res += ANUSVARA[lang];
+        i += 1;
+        continue;
+      }
+      if (rem[0] === "H") {
+        res += VISARGA[lang];
+        i += 1;
+        continue;
+      }
+
+      // Consonant match
+      let matchedCons = null;
+      for (const c of CONSONANT_MAP) {
+        if (rem.startsWith(c.k)) {
+          matchedCons = c;
+          break;
+        }
+      }
+
+      if (matchedCons) {
+        i += matchedCons.k.length;
+        const afterCons = roman.slice(i);
+
+        let matchedVowel = null;
+        for (const v of VOWEL_MAP) {
+          if (afterCons.startsWith(v.k)) {
+            matchedVowel = v;
+            break;
+          }
+        }
+
+        const consChar = lang === "hindi" ? matchedCons.hi : matchedCons.gu;
+
+        if (matchedVowel) {
+          i += matchedVowel.k.length;
+          const matra = lang === "hindi" ? matchedVowel.mat_hi : matchedVowel.mat_gu;
+          res += consChar + matra;
+
+          // Nasal / Anusvara check
+          const nextRem = roman.slice(i);
+          if (nextRem[0] === "M") {
+            res += ANUSVARA[lang];
+            i += 1;
+          } else if ((nextRem[0] === "n" || nextRem[0] === "m") && nextRem.length > 1) {
+            const afterN = nextRem.slice(1);
+            const isStopCons = CONSONANT_MAP.some(c => afterN.startsWith(c.k) && c.k !== "h" && c.k !== "y" && c.k !== "v" && c.k !== "w" && c.k !== "r" && c.k !== "l");
+            if (isStopCons) {
+              res += ANUSVARA[lang];
+              i += 1;
+            }
+          }
+        } else {
+          // No following vowel
+          if (i < len) {
+            res += consChar + VIRAMA[lang];
+          } else {
+            res += consChar;
+          }
+        }
+        continue;
+      }
+
+      // Independent vowel match
+      let matchedVowel = null;
+      for (const v of VOWEL_MAP) {
+        if (rem.startsWith(v.k)) {
+          matchedVowel = v;
+          break;
+        }
+      }
+
+      if (matchedVowel) {
+        i += matchedVowel.k.length;
+        const indVowel = lang === "hindi" ? matchedVowel.ind_hi : matchedVowel.ind_gu;
+        res += indVowel;
+
+        const nextRem = roman.slice(i);
+        if (nextRem[0] === "M") {
+          res += ANUSVARA[lang];
+          i += 1;
+        } else if ((nextRem[0] === "n" || nextRem[0] === "m") && nextRem.length > 1) {
+          const afterN = nextRem.slice(1);
+          const isStopCons = CONSONANT_MAP.some(c => afterN.startsWith(c.k) && c.k !== "h" && c.k !== "y" && c.k !== "v" && c.k !== "w" && c.k !== "r" && c.k !== "l");
+          if (isStopCons) {
+            res += ANUSVARA[lang];
+            i += 1;
+          }
+        }
+        continue;
+      }
+
+      res += rem[0];
+      i += 1;
+    }
+
+    // 3. Align with expected word if provided
+    if (expectedWord) {
+      if (expectedWord === res || expectedWord.startsWith(res)) return res;
+
+      const resChars = Array.from(res);
+      const expChars = Array.from(expectedWord).slice(0, resChars.length);
+      if (resChars.length === expChars.length) {
+        let compatible = true;
+        for (let idx = 0; idx < resChars.length; idx++) {
+          const r = resChars[idx];
+          const e = expChars[idx];
+          if (r === e) continue;
+          const isEquiv = 
+            (r === "न" && e === "ण") || (r === "ન" && e === "ણ") ||
+            (r === "श" && e === "ष") || (r === "શ" && e === "ષ") ||
+            (r === "ि" && e === "ी") || (r === "િ" && e === "ી") ||
+            (r === "ी" && e === "ि") || (r === "ી" && e === "િ") ||
+            (r === "ु" && e === "ू") || (r === "ુ" && e === "ૂ") ||
+            (r === "ू" && e === "ु") || (r === "ૂ" && e === "ુ") ||
+            (r === "ा" && e === "")  || (r === ""  && e === "ा") ||
+            (r === "ા" && e === "")  || (r === ""  && e === "ા") ||
+            (r === "ँ" && e === "ं") || (r === "ં" && e === "ઁ");
+          if (!isEquiv) {
+            compatible = false;
+            break;
+          }
+        }
+        if (compatible) return expChars.join("");
+      }
+    }
+
+    return res;
+  }
+
+  function getExpectedWord() {
+    const remainingPassage = config.passage.slice(committedIndicText.length);
+    const match = remainingPassage.match(/^[^\s।,.-]+/);
+    return match ? match[0] : "";
+  }
+
+  function removeLastGrapheme(str) {
+    if (!str) return "";
+    if (typeof Intl !== "undefined" && Intl.Segmenter) {
+      const seg = new Intl.Segmenter();
+      const segments = [...seg.segment(str)];
+      if (segments.length > 0) {
+        return str.slice(0, segments[segments.length - 1].index);
+      }
+    }
+    return Array.from(str).slice(0, -1).join("");
+  }
+
+  function updateIndicInputValue() {
+    const transliteratedWord = transliterateWord(romanWordBuffer, config.language, getExpectedWord());
+    input.value = committedIndicText + transliteratedWord;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function handleIndicLetter(char) {
+    romanWordBuffer += char;
+    updateIndicInputValue();
+  }
+
+  function handleIndicSpace() {
+    if (romanWordBuffer.length > 0) {
+      const transliteratedWord = transliterateWord(romanWordBuffer, config.language, getExpectedWord());
+      committedIndicText += transliteratedWord + " ";
+      romanWordBuffer = "";
+    } else {
+      committedIndicText += " ";
+    }
+    input.value = committedIndicText;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function handleIndicPunctuation(punct) {
+    if (romanWordBuffer.length > 0) {
+      const transliteratedWord = transliterateWord(romanWordBuffer, config.language, getExpectedWord());
+      committedIndicText += transliteratedWord;
+      romanWordBuffer = "";
+    }
+    let actualPunct = punct;
+    if (punct === ".") {
+      const remainingPassage = config.passage.slice(committedIndicText.length);
+      if (remainingPassage.startsWith("।") || (!remainingPassage.startsWith(".") && isIndic)) {
+        actualPunct = "।";
+      }
+    }
+    committedIndicText += actualPunct;
+    input.value = committedIndicText;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function handleIndicBackspace() {
+    if (romanWordBuffer.length > 0) {
+      romanWordBuffer = romanWordBuffer.slice(0, -1);
+      updateIndicInputValue();
+    } else if (committedIndicText.length > 0) {
+      committedIndicText = removeLastGrapheme(committedIndicText);
+      input.value = committedIndicText;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
+
   if (input) {
     input.addEventListener("focus", focusInput);
     input.addEventListener("blur", blurInput);
+
+    if (isIndic) {
+      input.addEventListener("keydown", (e) => {
+        if (hasFinished) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        if (e.key === "Backspace") {
+          e.preventDefault();
+          handleIndicBackspace();
+          return;
+        }
+
+        if (e.key === " " || e.key === "Spacebar") {
+          e.preventDefault();
+          handleIndicSpace();
+          return;
+        }
+
+        if (e.key === "." || e.key === "।") {
+          e.preventDefault();
+          handleIndicPunctuation(".");
+          return;
+        }
+
+        if (e.key.length === 1) {
+          if (/^[a-zA-Z]$/.test(e.key)) {
+            e.preventDefault();
+            handleIndicLetter(e.key);
+            return;
+          } else if (/^[0-9,;:\-–—!?'"()\/\\%]$/.test(e.key)) {
+            e.preventDefault();
+            handleIndicPunctuation(e.key);
+            return;
+          }
+        }
+      });
+    }
 
     input.addEventListener("input", () => {
       if (hasFinished) return;

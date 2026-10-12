@@ -72,6 +72,23 @@
   <div id="test-message" class="test-message" aria-live="polite"></div>
 </section>
 
+{% if settings.language in ['hindi', 'gujarati'] %}
+<div class="transliteration-badge" id="transliteration-badge">
+  <div class="transliteration-badge-left">
+    <span class="badge-icon">⌨️</span>
+    <div>
+      <strong>{% if settings.language == 'hindi' %}Hindi{% else %}Gujarati{% endif %} Phonetic Typing Active</strong>
+      <span class="badge-desc">— Type on your English keyboard; it automatically converts to {% if settings.language == 'hindi' %}Hindi (हिन्दी){% else %}Gujarati (ગુજરાતી){% endif %}.</span>
+    </div>
+  </div>
+  <div class="transliteration-badge-tips">
+    <span class="tip-chip"><code>namaste</code> → {% if settings.language == 'hindi' %}नमस्ते{% else %}નમસ્તે{% endif %}</span>
+    <span class="tip-chip"><code>bharat</code> → {% if settings.language == 'hindi' %}भारत{% else %}ભારત{% endif %}</span>
+    <span class="tip-chip"><code>.</code> → ।</span>
+  </div>
+</div>
+{% endif %}
+
 <div class="test-bottom-note">Keep your eyes on the text on screen. Smooth rhythm builds accuracy and speed.</div>
 <script id="test-config" type="application/json">{{ {"passage": passage, "time_limit": settings.time_limit, "difficulty": settings.difficulty, "paragraph_length": settings.paragraph_length, "language": settings.language, "is_custom": settings.is_custom}|tojson }}</script>
 {% endblock %}
