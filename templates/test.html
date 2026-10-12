@@ -12,15 +12,15 @@
       🔊 Sound: ON
     </button>
     <div class="test-meta">
-      <span class="tag tag-{{ settings.difficulty }}">{{ settings.difficulty|capitalize }}</span>
+      <span class="tag tag-{{ settings.difficulty }}" id="current-diff-tag">{{ settings.difficulty|capitalize }}</span>
       <span class="meta-divider">·</span>
-      <span>{% if settings.paragraph_length == 'custom' %}Custom passage{% else %}{{ settings.paragraph_length|capitalize }} passage{% endif %}</span>
+      <span id="current-length-tag">{% if settings.paragraph_length == 'custom' %}Custom passage{% else %}{{ settings.paragraph_length|capitalize }} passage{% endif %}</span>
       <span class="meta-divider">·</span>
-      <span>{% if settings.language == 'hindi' %}🇮🇳 Hindi{% elif settings.language == 'gujarati' %}🏛️ Gujarati{% else %}🇬🇧 English{% endif %}</span>
+      <span id="current-lang-tag">{% if settings.language == 'hindi' %}🇮🇳 Hindi{% elif settings.language == 'gujarati' %}🏛️ Gujarati{% else %}🇬🇧 English{% endif %}</span>
     </div>
-    <a href="{{ url_for('test', difficulty=settings.difficulty, paragraph_length=settings.paragraph_length, time_limit=settings.time_limit, language=settings.language) }}" class="button button-secondary button-sm" id="new-passage-btn">
-      🔄 Next Passage
-    </a>
+    <button type="button" class="button button-secondary button-sm" id="new-passage-btn" title="Change to next paragraph (Shortcut: Alt+N)">
+      🔄 Next Paragraph
+    </button>
   </div>
 </section>
 
@@ -37,10 +37,42 @@
     <div class="live-stat"><span class="metric-label">TYPED</span><strong id="correct-chars">0</strong></div>
   </div>
 
+  <!-- Paragraph Switcher & Controls Bar -->
+  <div class="paragraph-switcher-bar" id="paragraph-switcher-bar">
+    <div class="switcher-left">
+      <span class="switcher-label">PARAGRAPH:</span>
+      <div class="length-pills" id="length-pills" role="radiogroup" aria-label="Paragraph length">
+        <button type="button" class="length-pill {% if settings.paragraph_length == 'short' %}active{% endif %}" data-length="short">Short</button>
+        <button type="button" class="length-pill {% if settings.paragraph_length == 'medium' %}active{% endif %}" data-length="medium">Medium</button>
+        <button type="button" class="length-pill {% if settings.paragraph_length == 'long' %}active{% endif %}" data-length="long">Long</button>
+        <button type="button" class="length-pill {% if settings.paragraph_length == 'custom' %}active{% endif %}" data-length="custom" id="custom-length-pill">✏️ Custom</button>
+      </div>
+    </div>
+    <div class="switcher-right">
+      <div class="passage-select-wrap">
+        <select id="passage-select" class="passage-select" aria-label="Choose paragraph">
+          <option value="">Choose paragraph...</option>
+          {% for p in passages_list %}
+          <option value="{{ p.index }}">{{ p.preview }} ({{ p.word_count }} words)</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="button" class="button button-secondary button-sm action-btn" id="change-passage-btn" title="Change to another paragraph (Shortcut: Alt+N)">
+        🔀 New Paragraph
+      </button>
+      <button type="button" class="button button-secondary button-sm action-btn" id="open-custom-modal-btn" title="Paste or type custom paragraph">
+        ✏️ Custom Text
+      </button>
+    </div>
+  </div>
+
   <div class="passage-card interactive-passage-card" id="passage-card">
     <div class="passage-card-header">
       <span class="passage-label"><span class="live-dot"></span> PARAGRAPH TYPING CANVAS</span>
-      <span class="focus-hint" id="focus-hint">Click anywhere to focus & start typing</span>
+      <div class="header-right-tools">
+        <div id="passage-toast" class="passage-toast" aria-live="polite"></div>
+        <span class="focus-hint" id="focus-hint">Click anywhere to focus & start typing</span>
+      </div>
     </div>
     
     <div id="passage-display" class="passage-display paragraph-writing-canvas"
@@ -62,7 +94,7 @@
 
   <div class="test-controls-bar">
     <div class="typing-help" id="typing-help">
-      <span>⚡</span> Start typing to launch the timer. Press <kbd>Tab</kbd> + <kbd>Enter</kbd> or click <strong>Restart</strong> to retry.
+      <span>⚡</span> Start typing to launch the timer. Press <kbd>Tab</kbd> + <kbd>Enter</kbd> or click <strong>Restart</strong> to retry. Press <kbd>Alt</kbd> + <kbd>N</kbd> to change paragraph.
     </div>
     <button type="button" class="button button-secondary button-sm" id="restart-test-btn">
       ↺ Restart
@@ -90,6 +122,30 @@
 {% endif %}
 
 <div class="test-bottom-note">Keep your eyes on the text on screen. Smooth rhythm builds accuracy and speed.</div>
+
+<!-- Custom Paragraph Modal -->
+<div class="modal-overlay" id="custom-paragraph-modal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-labelledby="modal-title">
+    <div class="modal-header">
+      <h3 id="modal-title">✏️ Enter Custom Paragraph</h3>
+      <button type="button" class="modal-close-btn" id="close-modal-btn" aria-label="Close modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">Paste or type any paragraph you want to practice below.</p>
+      <textarea id="modal-custom-text" class="modal-textarea" rows="6" maxlength="5000" placeholder="Type or paste your text here..."></textarea>
+      <div class="modal-text-meta">
+        <span id="modal-char-count">0 / 5,000 characters</span>
+        <span id="modal-word-count">0 words</span>
+      </div>
+      <div id="modal-error" class="modal-error" style="display: none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="button button-secondary button-sm" id="cancel-modal-btn">Cancel</button>
+      <button type="button" class="button button-primary button-sm" id="apply-custom-modal-btn">Apply & Start Typing</button>
+    </div>
+  </div>
+</div>
+
 <script id="test-config" type="application/json">{{ {"passage": passage, "time_limit": settings.time_limit, "difficulty": settings.difficulty, "paragraph_length": settings.paragraph_length, "language": settings.language, "is_custom": settings.is_custom}|tojson }}</script>
 {% endblock %}
 {% block scripts %}

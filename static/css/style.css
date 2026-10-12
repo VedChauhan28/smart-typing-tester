@@ -202,3 +202,219 @@ h2 { font-size: 34px; line-height: 1.08; }
     gap: 10px;
   }
 }
+
+/* ── Paragraph Switcher & Controls Bar ───────────────────────────────────── */
+.paragraph-switcher-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 10px rgba(33, 58, 54, 0.03);
+  flex-wrap: wrap;
+}
+.switcher-left,
+.switcher-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.switcher-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.length-pills {
+  display: inline-flex;
+  background: var(--cream);
+  padding: 3px;
+  border-radius: 999px;
+  gap: 4px;
+}
+.length-pill {
+  border: 0;
+  background: transparent;
+  padding: 5px 13px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  transition: all 0.18s ease;
+  user-select: none;
+}
+.length-pill:hover {
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.05);
+}
+.length-pill.active {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 2px 6px rgba(33, 58, 54, 0.18);
+}
+.passage-select-wrap {
+  position: relative;
+}
+.passage-select {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  max-width: 240px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.18s ease;
+}
+.passage-select:hover,
+.passage-select:focus {
+  border-color: var(--orange);
+}
+.header-right-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.passage-toast {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2e7d32;
+  background: #e8f5e9;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+.passage-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Custom Paragraph Modal ─────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(33, 58, 54, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.modal-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+.modal-card {
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgba(33, 58, 54, 0.22);
+  width: 100%;
+  max-width: 560px;
+  padding: 28px;
+  transform: scale(0.96);
+  transition: transform 0.2s ease;
+}
+.modal-overlay.open .modal-card {
+  transform: scale(1);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.modal-header h3 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 20px;
+  margin: 0;
+  color: var(--ink);
+}
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.15s ease;
+}
+.modal-close-btn:hover {
+  color: var(--orange-deep);
+}
+.modal-desc {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+.modal-textarea {
+  width: 100%;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-family: "Space Grotesk", monospace;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.modal-textarea:focus {
+  border-color: var(--orange);
+  background: var(--paper);
+}
+.modal-text-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.modal-error {
+  color: #c62828;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 10px;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+@media (max-width: 768px) {
+  .paragraph-switcher-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .switcher-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .passage-select {
+    max-width: 100%;
+    flex: 1;
+  }
+}

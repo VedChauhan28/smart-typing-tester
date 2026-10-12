@@ -21,6 +21,25 @@
   const focusHint = document.getElementById("focus-hint");
   const soundToggleBtn = document.getElementById("sound-toggle-btn");
 
+  // Paragraph change & switcher references
+  const newPassageBtn = document.getElementById("new-passage-btn");
+  const changePassageBtn = document.getElementById("change-passage-btn");
+  const lengthPillButtons = document.querySelectorAll(".length-pill");
+  const passageSelect = document.getElementById("passage-select");
+  const passageToast = document.getElementById("passage-toast");
+  const currentLengthTag = document.getElementById("current-length-tag");
+
+  // Custom passage modal references
+  const customModal = document.getElementById("custom-paragraph-modal");
+  const openCustomModalBtn = document.getElementById("open-custom-modal-btn");
+  const closeModalBtn = document.getElementById("close-modal-btn");
+  const cancelModalBtn = document.getElementById("cancel-modal-btn");
+  const applyCustomModalBtn = document.getElementById("apply-custom-modal-btn");
+  const modalCustomText = document.getElementById("modal-custom-text");
+  const modalCharCount = document.getElementById("modal-char-count");
+  const modalWordCount = document.getElementById("modal-word-count");
+  const modalError = document.getElementById("modal-error");
+
   // Sync lang attribute to hidden input so the correct script font is applied
   if (passageDisplay && input) {
     const lang = passageDisplay.getAttribute("lang");
@@ -60,6 +79,7 @@
   let keySpriteBuffer = null;
   let errorAudioBuffer = null;
   let starAudioBuffer = null;
+  let popAudioBuffer = null;
 
   function getAudioContext() {
     if (!audioCtx) {
@@ -104,6 +124,7 @@
     loadAudioBuffer("/static/audio/keysprite.mp3").then(buf => { keySpriteBuffer = buf; });
     loadAudioBuffer("/static/audio/error.mp3").then(buf => { errorAudioBuffer = buf; });
     loadAudioBuffer("/static/audio/star.mp3").then(buf => { starAudioBuffer = buf; });
+    loadAudioBuffer("/static/audio/pop.mp3").then(buf => { popAudioBuffer = buf; });
   }
 
   initTypingAudio();
@@ -161,6 +182,22 @@
         gainNode.connect(ctx.destination);
         src.start(0);
         return;
+      }
+    } catch (e) {}
+  }
+
+  function playPopSound() {
+    if (!soundEnabled) return;
+    try {
+      const ctx = getAudioContext();
+      if (popAudioBuffer) {
+        const src = ctx.createBufferSource();
+        src.buffer = popAudioBuffer;
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = 0.85;
+        src.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        src.start(0);
       }
     } catch (e) {}
   }
@@ -733,6 +770,210 @@
     });
   }
 
+  /* ── Dynamic Paragraph Switching & Modal Logic ─────────────────────────── */
+  let isChangingPassage = false;
+
+  function showToast(msg) {
+    if (!passageToast) return;
+    passageToast.textContent = msg;
+    passageToast.classList.add("show");
+    window.clearTimeout(passageToast._timeout);
+    passageToast._timeout = window.setTimeout(() => {
+      passageToast.classList.remove("show");
+    }, 2400);
+  }
+
+  function applyNewPassage(data) {
+    config.passage = data.passage;
+    config.paragraph_length = data.paragraph_length || config.paragraph_length;
+    config.is_custom = !!data.is_custom;
+
+    window.localStorage.setItem("smartTypingLastPassage", config.passage);
+    window.localStorage.setItem("smartTypingIsCustom", config.is_custom ? "true" : "false");
+
+    if (currentLengthTag) {
+      currentLengthTag.textContent = config.is_custom
+        ? "Custom passage"
+        : `${config.paragraph_length.charAt(0).toUpperCase() + config.paragraph_length.slice(1)} passage`;
+    }
+
+    // Update active length pill
+    lengthPillButtons.forEach((pill) => {
+      if (pill.dataset.length === config.paragraph_length) {
+        pill.classList.add("active");
+      } else {
+        pill.classList.remove("active");
+      }
+    });
+
+    // Update URL query parameters without reloading
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("difficulty", config.difficulty);
+      url.searchParams.set("paragraph_length", config.paragraph_length);
+      url.searchParams.set("time_limit", config.time_limit);
+      url.searchParams.set("language", config.language);
+      if (config.is_custom) {
+        url.searchParams.set("is_custom", "1");
+      } else {
+        url.searchParams.delete("is_custom");
+      }
+      window.history.replaceState({}, "", url.toString());
+    } catch (e) {}
+
+    resetTest();
+    playPopSound();
+
+    const words = data.word_count || config.passage.trim().split(/\s+/).length;
+    showToast(config.is_custom ? "✓ Custom paragraph loaded!" : `✓ Paragraph loaded (${words} words)`);
+  }
+
+  async function fetchNewPassage(opts = {}) {
+    if (isChangingPassage) return;
+    isChangingPassage = true;
+
+    if (newPassageBtn) newPassageBtn.disabled = true;
+    if (changePassageBtn) changePassageBtn.disabled = true;
+
+    try {
+      if (opts.customText) {
+        const res = await fetch("/api/custom-passage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ custom_passage: opts.customText })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to set custom passage");
+        }
+        applyNewPassage(data);
+        closeModal();
+      } else {
+        const targetLength = opts.length || config.paragraph_length;
+        const params = new URLSearchParams({
+          difficulty: config.difficulty,
+          paragraph_length: targetLength,
+          time_limit: config.time_limit,
+          language: config.language,
+          exclude: config.passage || ""
+        });
+        if (opts.index !== undefined && opts.index !== null && opts.index !== "") {
+          params.set("passage_index", opts.index);
+        }
+
+        const res = await fetch(`/api/new-passage?${params.toString()}`);
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to fetch new passage");
+        }
+        applyNewPassage(data);
+      }
+    } catch (err) {
+      if (message) {
+        message.textContent = err.message || "Failed to update passage.";
+        message.className = "test-message visible warning";
+      }
+    } finally {
+      isChangingPassage = false;
+      if (newPassageBtn) newPassageBtn.disabled = false;
+      if (changePassageBtn) changePassageBtn.disabled = false;
+      if (passageSelect) passageSelect.value = "";
+    }
+  }
+
+  function openModal() {
+    if (!customModal) return;
+    customModal.classList.add("open");
+    customModal.setAttribute("aria-hidden", "false");
+    if (modalCustomText) {
+      modalCustomText.value = config.is_custom ? config.passage : "";
+      updateModalCounts();
+      modalCustomText.focus();
+    }
+    if (modalError) modalError.style.display = "none";
+  }
+
+  function closeModal() {
+    if (!customModal) return;
+    customModal.classList.remove("open");
+    customModal.setAttribute("aria-hidden", "true");
+    if (modalError) modalError.style.display = "none";
+    focusInput();
+  }
+
+  function updateModalCounts() {
+    if (!modalCustomText) return;
+    const len = modalCustomText.value.length;
+    const words = modalCustomText.value.trim() ? modalCustomText.value.trim().split(/\s+/).length : 0;
+    if (modalCharCount) modalCharCount.textContent = `${len.toLocaleString()} / 5,000 characters`;
+    if (modalWordCount) modalWordCount.textContent = `${words} word${words === 1 ? "" : "s"}`;
+  }
+
+  if (openCustomModalBtn) {
+    openCustomModalBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openModal();
+    });
+  }
+  if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
+  if (cancelModalBtn) cancelModalBtn.addEventListener("click", closeModal);
+  if (customModal) {
+    customModal.addEventListener("click", (e) => {
+      if (e.target === customModal) closeModal();
+    });
+  }
+  if (modalCustomText) {
+    modalCustomText.addEventListener("input", updateModalCounts);
+  }
+  if (applyCustomModalBtn) {
+    applyCustomModalBtn.addEventListener("click", () => {
+      const text = modalCustomText ? modalCustomText.value.trim() : "";
+      if (!text) {
+        if (modalError) {
+          modalError.textContent = "Please enter some text for your custom paragraph.";
+          modalError.style.display = "block";
+        }
+        return;
+      }
+      fetchNewPassage({ customText: text });
+    });
+  }
+
+  if (newPassageBtn) {
+    newPassageBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fetchNewPassage();
+    });
+  }
+
+  if (changePassageBtn) {
+    changePassageBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fetchNewPassage();
+    });
+  }
+
+  lengthPillButtons.forEach((pill) => {
+    pill.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const len = pill.dataset.length;
+      if (len === "custom") {
+        openModal();
+      } else {
+        fetchNewPassage({ length: len });
+      }
+    });
+  });
+
+  if (passageSelect) {
+    passageSelect.addEventListener("change", (e) => {
+      const idx = e.target.value;
+      if (idx !== "") {
+        fetchNewPassage({ index: idx });
+      }
+    });
+  }
+
   if (restartBtn) {
     restartBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -742,7 +983,14 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      resetTest();
+      if (customModal && customModal.classList.contains("open")) {
+        closeModal();
+      } else {
+        resetTest();
+      }
+    } else if (e.altKey && (e.key === "n" || e.key === "N")) {
+      e.preventDefault();
+      fetchNewPassage();
     }
   });
 

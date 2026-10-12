@@ -479,12 +479,31 @@ def _fit_to_length(text: str, length: str, difficulty: str, time_limit: int = 60
     return " ".join(result_sentences)
 
 
+def get_passages_list(difficulty: str, language: str = "english") -> list[dict]:
+    """Return a list of available passage options with previews and word counts."""
+    passage_bank = LANGUAGE_PASSAGES.get(language, PASSAGES)
+    if difficulty not in passage_bank:
+        difficulty = "medium"
+    options = passage_bank[difficulty]
+    results = []
+    for i, p in enumerate(options):
+        clean = " ".join(p.split())
+        preview = clean[:65] + "..." if len(clean) > 65 else clean
+        results.append({
+            "index": i,
+            "preview": f"Passage {i+1}: {preview}",
+            "word_count": word_count(clean),
+        })
+    return results
+
+
 def choose_passage(
     difficulty: str,
     length: str,
     time_limit: int = 60,
     exclude: str = "",
     language: str = "english",
+    passage_index: int | None = None,
 ) -> str:
     """
     Efficiently select and format a passage matching difficulty, time limit, length,
@@ -500,26 +519,45 @@ def choose_passage(
         difficulty = "medium"
 
     options = passage_bank[difficulty]
-    candidates = [p for p in options if p != exclude] or options
-
     max_sentences = {"easy": 2, "medium": 5, "hard": None}.get(difficulty)
     min_words, _max_words = get_target_word_range(length, time_limit)
 
-    # Find the candidate that best fits the target word range out of the box
-    best_candidate = None
-    best_score = float("inf")
+    # If a specific passage index is requested
+    if passage_index is not None and isinstance(passage_index, int) and 0 <= passage_index < len(options):
+        source = options[passage_index]
+        sentences = get_sentences(source)
+        if max_sentences is not None:
+            sentences = sentences[:max_sentences]
+        full_text = " ".join(sentences)
+        return _fit_to_length(full_text, length, difficulty, time_limit=time_limit)
 
+    # Filter out candidates matching the excluded passage
+    filtered = []
+    ex_clean = " ".join(exclude.split())
+    for p in options:
+        p_clean = " ".join(p.split())
+        if ex_clean:
+            if p_clean == ex_clean or ex_clean.startswith(p_clean[:35]) or p_clean.startswith(ex_clean[:35]):
+                continue
+        filtered.append(p)
+
+    candidates = filtered or options
+
+    # Find candidates that best fit target word range
+    scored = []
     for cand in candidates:
         s_list = get_sentences(cand)
         if max_sentences is not None:
             s_list = s_list[:max_sentences]
         w = word_count(" ".join(s_list))
         score = abs(w - min_words)
-        if score < best_score:
-            best_score = score
-            best_candidate = cand
+        scored.append((score, cand))
 
-    source = best_candidate or random.choice(candidates)
+    scored.sort(key=lambda x: x[0])
+    # Pick randomly among top 3 closest candidates for rich variety
+    top_candidates = [cand for score, cand in scored[:3]]
+    source = random.choice(top_candidates) if top_candidates else random.choice(candidates)
+
     sentences = get_sentences(source)
     if max_sentences is not None:
         sentences = sentences[:max_sentences]

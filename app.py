@@ -13,7 +13,14 @@ from database import (
     initialize_database,
     save_result,
 )
-from passages import DIFFICULTIES, LANGUAGES, LENGTHS, TIME_OPTIONS, choose_passage
+from passages import (
+    DIFFICULTIES,
+    LANGUAGES,
+    LENGTHS,
+    TIME_OPTIONS,
+    choose_passage,
+    get_passages_list,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -171,7 +178,118 @@ def test():
         "is_custom": is_custom,
     }
 
-    return render_template("test.html", passage=passage, settings=settings)
+    passages_list = get_passages_list(difficulty, language) if not is_custom else []
+
+    return render_template(
+        "test.html",
+        passage=passage,
+        settings=settings,
+        passages_list=passages_list,
+    )
+
+
+@app.route("/api/new-passage")
+def api_new_passage():
+    """Return a new passage matching the specified settings without page refresh."""
+    difficulty = request.args.get("difficulty", "medium").lower()
+    paragraph_length = request.args.get("paragraph_length", "medium").lower()
+    time_limit = request.args.get("time_limit", "60")
+    language = request.args.get("language", "english").lower()
+    exclude = request.args.get("exclude", "").strip()
+    passage_index_arg = request.args.get("passage_index")
+
+    if difficulty not in DIFFICULTIES:
+        difficulty = "medium"
+    if paragraph_length not in LENGTHS:
+        paragraph_length = "medium"
+    if language not in LANGUAGES:
+        language = "english"
+
+    try:
+        seconds = int(time_limit)
+        if seconds not in TIME_OPTIONS:
+            seconds = 60
+    except (TypeError, ValueError):
+        seconds = 60
+
+    passage_index = None
+    if passage_index_arg is not None and passage_index_arg != "":
+        try:
+            passage_index = int(passage_index_arg)
+        except (TypeError, ValueError):
+            passage_index = None
+
+    if paragraph_length == "custom":
+        custom_passage = session.get("custom_passage", "").strip()
+        if not custom_passage:
+            paragraph_length = "medium"
+            passage = choose_passage(
+                difficulty,
+                paragraph_length,
+                time_limit=seconds,
+                exclude=exclude,
+                language=language,
+                passage_index=passage_index,
+            )
+        else:
+            passage = custom_passage
+    else:
+        passage = choose_passage(
+            difficulty,
+            paragraph_length,
+            time_limit=seconds,
+            exclude=exclude,
+            language=language,
+            passage_index=passage_index,
+        )
+
+    return jsonify(
+        {
+            "passage": passage,
+            "difficulty": difficulty,
+            "paragraph_length": paragraph_length,
+            "time_limit": seconds,
+            "language": language,
+            "is_custom": paragraph_length == "custom",
+            "word_count": len(passage.split()),
+            "char_count": len(passage),
+        }
+    )
+
+
+@app.post("/api/custom-passage")
+def api_custom_passage():
+    """Apply a custom passage from the typing page modal."""
+    payload = request.get_json(silent=True) or {}
+    text = payload.get("custom_passage", "").strip()
+    if not text:
+        return jsonify({"error": "Please enter or paste your custom paragraph."}), 400
+    if len(text) > 5000:
+        return jsonify({"error": "Custom paragraph cannot exceed 5,000 characters."}), 400
+
+    session["custom_passage"] = text
+    return jsonify(
+        {
+            "passage": text,
+            "paragraph_length": "custom",
+            "is_custom": True,
+            "word_count": len(text.split()),
+            "char_count": len(text),
+        }
+    )
+
+
+@app.route("/api/passages-list")
+def api_passages_list():
+    """Return available paragraph choices for a given difficulty and language."""
+    difficulty = request.args.get("difficulty", "medium").lower()
+    language = request.args.get("language", "english").lower()
+    if difficulty not in DIFFICULTIES:
+        difficulty = "medium"
+    if language not in LANGUAGES:
+        language = "english"
+    passages = get_passages_list(difficulty, language)
+    return jsonify({"passages": passages})
 
 
 @app.post("/save-result")
@@ -264,7 +382,8 @@ def server_error(_error):
 def start_app():
     initialize_database(DATABASE_PATH)
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    debug = os.environ.get("FLASK_DEBUG", "True").lower() in ("true", "1")
+    app.run(host="0.0.0.0", port=port, debug=debug)
 
 
 if __name__ == "__main__":
